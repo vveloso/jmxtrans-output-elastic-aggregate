@@ -22,10 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Optional.fromNullable;
@@ -107,18 +104,18 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 	private void write(Server server, String typeName, List<Result> results) {
 		final Map<String, Object> document = new HashMap<>();
-		final Map<String, Object> metadata = new HashMap<>(5);
+		final Map<String, Object> metadata = new HashMap<>(6);
 		final String typeNameValues = getConcatedTypeNameValues(typeName);
+		final String indexName = String.format(elasticIndexName, Calendar.getInstance());
 
 		metadata.put("serverAlias", server.getAlias());
 		metadata.put("server", server.getHost());
-		metadata.put("port", server.getPort());
+		metadata.put("port", Integer.valueOf(server.getPort()));
 		metadata.put("typeName", typeName);
 		metadata.put("typeNameValues", typeNameValues);
 
-		document.put("@metadata", metadata);
-
 		for (final Result result : results) {
+			metadata.putIfAbsent("className", result.getClassName());
 			document.putIfAbsent("@timestamp", result.getEpoch());
 
 			final ImmutableMap<String, Object> values = result.getValues();
@@ -127,9 +124,11 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 					values.size() == 1 ? values.get(result.getAttributeName()) : values);
 		}
 
-		LOGGER.debug("Insert into Elastic index [{}] with type [{}]: {}", elasticIndexName, elasticTypeName, document);
+		document.put("@metadata", metadata);
 
-		final Index idx = new Index.Builder(document).index(elasticIndexName).type(elasticTypeName).build();
+		LOGGER.debug("Insert into Elastic index [{}] with type [{}]: {}", indexName, elasticTypeName, document);
+
+		final Index idx = new Index.Builder(document).index(indexName).type(elasticTypeName).build();
 		try {
 			final DocumentResult result = jestClient.execute(idx);
 			if (!result.isSucceeded()) {
