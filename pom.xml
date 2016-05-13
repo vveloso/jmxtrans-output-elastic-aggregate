@@ -20,8 +20,8 @@
 
     <scm>
         <url>https://github.com/vveloso/jmxtrans-output-elastic-aggregate</url>
-        <connection>https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</connection>
-        <developerConnection>https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</developerConnection>
+        <connection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</connection>
+        <developerConnection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</developerConnection>
     </scm>
 
     <properties>
