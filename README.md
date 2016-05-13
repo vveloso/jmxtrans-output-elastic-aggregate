@@ -47,3 +47,9 @@ Sample configuration:
   } ]
 }
 ```
+
+## Index partitioning
+
+It is possible to use `Formatter` date time conversion suffix characters in index names. See [java.util.Formatter Date/Time Conversions](https://docs.oracle.com/javase/7/docs/api/java/util/Formatter.html#dt) for details on formatting.
+
+For example, the configuration above could be modified to support indexes partitioned daily by using `"elasticIndexName" : "jmx-entries-%1$tY-%1$tm-%1$td"` instead.
