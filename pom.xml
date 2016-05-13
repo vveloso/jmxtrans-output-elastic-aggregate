@@ -8,6 +8,22 @@
     <artifactId>jmxtrans-output-elastic-aggregate</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <description>JMXTrans output writer for Elasticsearch which outputs one structured document for each query.</description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/vveloso/jmxtrans-output-elastic-aggregate</url>
+        <connection>https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</connection>
+        <developerConnection>https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</developerConnection>
+    </scm>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
