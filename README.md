@@ -22,3 +22,28 @@ Documents pushed to Elastic have two automatically generated attributes, `@metad
   "ScheduledCount": 0
 }
 ```
+
+Sample configuration:
+
+```
+{
+  "servers" : [ {
+	"url" : "service:jmx:http-remoting-jmx://server.example.com:9990",
+    "outputWriters" : [ {
+	  "@class" : "com.googlecode.jmxtrans.model.output.elastic.ElasticAggregateWriter",
+	  "connectionUrl" : "http://elastic.example.com:9200",
+	  "booleanAsNumber" : false,
+	  "elasticTypeName" : "jmx-entry",
+	  "elasticIndexName" : "tnms_jmx-entries",
+	  "typeNames" : [ "type", "address", "name", "data-source", "service" ]
+	}	],
+    "queries" : [ {
+      "obj" : "java.lang:type=Memory",
+      "attr" : [ "HeapMemoryUsage", "NonHeapMemoryUsage" ]
+    }, {
+	  "obj" : "org.hornetq:module=Core,type=Queue,address=*,name=*",
+      "attr" : [ "ConsumerCount", "DeliveringCount", "Durable", "MessageCount", "MessagesAdded", "ScheduledCount", "Temporary" ]
+	} ]
+  } ]
+}
+```
