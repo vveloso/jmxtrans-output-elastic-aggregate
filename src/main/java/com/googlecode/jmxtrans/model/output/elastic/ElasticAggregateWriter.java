@@ -38,6 +38,7 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 	private static final String DEFAULT_TYPE_NAME = "jmx-entry";
 	private static final String DEFAULT_INDEX_NAME = "jmxtrans";
+	private static final Integer DEFAULT_READ_TIMEOUT = 10000;
 
 	private final String elasticTypeName;
 	private final String elasticIndexName;
@@ -48,6 +49,7 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 								  @JsonProperty("booleanAsNumber") boolean booleanAsNumber,
 								  @JsonProperty("debug") Boolean debugEnabled,
 								  @JsonProperty("connectionUrl") String connectionUrl,
+								  @JsonProperty("connectionReadTimeout") Integer connectionReadTimeout,
 								  @JsonProperty("elasticTypeName") String elasticTypeName,
 								  @JsonProperty("elasticIndexName") String elasticIndexName,
 								  @JsonProperty("settings") Map<String, Object> settings) {
@@ -57,14 +59,18 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 		this.elasticIndexName = firstNonNull(elasticIndexName, (String) settingsMap.get("elasticIndexName"), DEFAULT_INDEX_NAME);
 		this.elasticTypeName = firstNonNull(elasticTypeName, (String) settingsMap.get("elasticTypeName"), DEFAULT_TYPE_NAME);
 
-		this.jestClient = createJestClient(connectionUrl);
+		int readTimeout = MoreObjects.firstNonNull(connectionReadTimeout, DEFAULT_READ_TIMEOUT);
+
+		this.jestClient = createJestClient(connectionUrl, readTimeout);
 	}
 
-	private JestClient createJestClient(String connectionUrl) {
-		LOGGER.info("Creating a jest elastic search client for connection URL: {}", connectionUrl);
+	private JestClient createJestClient(String connectionUrl, int readTimeout) {
+		LOGGER.info("Creating a jest elastic search client for connection URL: {} with timeout: {}",
+				connectionUrl, readTimeout);
 		JestClientFactory factory = new JestClientFactory();
 		factory.setHttpClientConfig(
 				new HttpClientConfig.Builder(connectionUrl)
+						.readTimeout(readTimeout)
 						.multiThreaded(true)
 						.build());
 		return factory.getObject();
@@ -135,7 +141,7 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 				LOGGER.error("Failed to write entry to Elastic: {}", result.getErrorMessage());
 			}
 		} catch (IOException e) {
-			LOGGER.error("Failed to write entry to Elastic: {}", e);
+			LOGGER.error("Failed to write entry to Elastic due to an exception: {}", e.getMessage());
 		}
 	}
 
