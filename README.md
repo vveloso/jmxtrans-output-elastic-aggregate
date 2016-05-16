@@ -32,6 +32,7 @@ Sample configuration:
     "outputWriters" : [ {
 	  "@class" : "com.googlecode.jmxtrans.model.output.elastic.ElasticAggregateWriter",
 	  "connectionUrl" : "http://elastic.example.com:9200",
+	  "connectionReadTimeout" : "20000",
 	  "booleanAsNumber" : false,
 	  "elasticTypeName" : "jmx-entry",
 	  "elasticIndexName" : "tnms_jmx-entries",
