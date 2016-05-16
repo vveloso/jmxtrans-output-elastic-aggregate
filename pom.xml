@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.github.vveloso</groupId>
     <artifactId>jmxtrans-output-elastic-aggregate</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
 
 	<name>JMXTrans structured document output writer for Elasticsearch</name>
     <description>JMXTrans output writer for Elasticsearch which outputs one structured document for each query.</description>
@@ -24,7 +22,8 @@
         <url>https://github.com/vveloso/jmxtrans-output-elastic-aggregate</url>
         <connection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</connection>
         <developerConnection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</developerConnection>
-    </scm>
+      <tag>jmxtrans-output-elastic-aggregate-1.0</tag>
+  </scm>
 
 	<developers>
 		<developer>
