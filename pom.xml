@@ -8,7 +8,9 @@
     <artifactId>jmxtrans-output-elastic-aggregate</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+	<name>JMXTrans structured document output writer for Elasticsearch</name>
     <description>JMXTrans output writer for Elasticsearch which outputs one structured document for each query.</description>
+	<url>https://github.com/vveloso/jmxtrans-output-elastic-aggregate</url>
 
     <licenses>
         <license>
@@ -24,6 +26,14 @@
         <developerConnection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</developerConnection>
     </scm>
 
+	<developers>
+		<developer>
+			<id>vveloso</id>
+			<name>Vasco Veloso</name>
+			<email>vveloso@gmail.com</email>
+		</developer>
+	</developers>
+	
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -78,6 +88,11 @@
 					<groupId>org.sonatype.plugins</groupId>
 					<artifactId>nexus-staging-maven-plugin</artifactId>
 					<version>1.6.3</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-gpg-plugin</artifactId>
+					<version>1.5</version>
 				</plugin>
 			</plugins>
 		</pluginManagement>
@@ -160,13 +175,36 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.5</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
 								<phase>verify</phase>
 								<goals>
 									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
 								</goals>
 							</execution>
 						</executions>
