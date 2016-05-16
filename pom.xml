@@ -80,4 +80,11 @@
         </plugins>
     </build>
 
+	<distributionManagement>
+	    <repository>
+			<id>oss-sonatype</id>
+			<name>Open Source Software Repository Hosting (OSSRH)</name>
+		</repository>
+	</distributionManagement>
+	
 </project>
