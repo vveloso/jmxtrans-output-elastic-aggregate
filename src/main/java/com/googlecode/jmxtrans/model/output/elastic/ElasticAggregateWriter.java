@@ -3,6 +3,7 @@ package com.googlecode.jmxtrans.model.output.elastic;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.googlecode.jmxtrans.exceptions.LifecycleException;
@@ -11,17 +12,21 @@ import com.googlecode.jmxtrans.model.Result;
 import com.googlecode.jmxtrans.model.Server;
 import com.googlecode.jmxtrans.model.ValidationException;
 import com.googlecode.jmxtrans.model.output.BaseOutputWriter;
-import io.searchbox.client.JestClient;
-import io.searchbox.client.JestClientFactory;
-import io.searchbox.client.config.HttpClientConfig;
-import io.searchbox.core.DocumentResult;
-import io.searchbox.core.Index;
-import org.apache.http.annotation.NotThreadSafe;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.client.transport.NoNodeAvailableException;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Optional.fromNullable;
@@ -48,27 +53,33 @@ Documents pushed to Elastic have two automatically generated attributes, @metada
  }
 </pre>
  */
-@NotThreadSafe
 public class ElasticAggregateWriter extends BaseOutputWriter {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ElasticAggregateWriter.class);
 
 	private static final String DEFAULT_TYPE_NAME = "jmx-entry";
 	private static final String DEFAULT_INDEX_NAME = "jmxtrans";
-	private static final Integer DEFAULT_READ_TIMEOUT = 10000;
+	private static final String DEFAULT_CLUSTER_NAME = "";
+
+	private static final int ELASTIC_PORT = 9300;
 
 	private final String elasticTypeName;
 	private final String elasticIndexName;
-	private final JestClient jestClient;
+	private final String url;
+	private final String clusterName;
+	private ClientConnection client;
+
+	private static final ActionListener<IndexResponse> WRITE_ACTION_LISTENER = new WriteActionListener();
+	private static final Map<String, ClientConnection> CONNECTIONS = new ConcurrentHashMap<>();
 
 	@JsonCreator
 	public ElasticAggregateWriter(@JsonProperty("typeNames") ImmutableList<String> typeNames,
 								  @JsonProperty("booleanAsNumber") boolean booleanAsNumber,
 								  @JsonProperty("debug") Boolean debugEnabled,
-								  @JsonProperty("connectionUrl") String connectionUrl,
-								  @JsonProperty("connectionReadTimeout") Integer connectionReadTimeout,
-								  @JsonProperty("elasticTypeName") String elasticTypeName,
+								  @JsonProperty("elasticHostName") String elasticHostName,
+								  @JsonProperty("elasticClusterName") String elasticClusterName,
 								  @JsonProperty("elasticIndexName") String elasticIndexName,
+								  @JsonProperty("elasticTypeName") String elasticTypeName,
 								  @JsonProperty("settings") Map<String, Object> settings) {
 		super(typeNames, booleanAsNumber, debugEnabled, settings);
 		final Map<String, Object> settingsMap = MoreObjects.firstNonNull(settings, Collections.emptyMap());
@@ -76,34 +87,52 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 		this.elasticIndexName = firstNonNull(elasticIndexName, (String) settingsMap.get("elasticIndexName"), DEFAULT_INDEX_NAME);
 		this.elasticTypeName = firstNonNull(elasticTypeName, (String) settingsMap.get("elasticTypeName"), DEFAULT_TYPE_NAME);
 
-		int readTimeout = MoreObjects.firstNonNull(connectionReadTimeout, DEFAULT_READ_TIMEOUT);
-
-		this.jestClient = createJestClient(connectionUrl, readTimeout);
+		this.url = MoreObjects.firstNonNull(elasticHostName, (String) settingsMap.get("elasticHostName"));
+		this.clusterName = firstNonNull(elasticClusterName, (String) settingsMap.get("elasticClusterName"), DEFAULT_CLUSTER_NAME);
 	}
 
-	private JestClient createJestClient(String connectionUrl, int readTimeout) {
-		LOGGER.info("Creating a jest elastic search client for connection URL: {} with timeout: {}",
-				connectionUrl, readTimeout);
-		JestClientFactory factory = new JestClientFactory();
-		factory.setHttpClientConfig(
-				new HttpClientConfig.Builder(connectionUrl)
-						.readTimeout(readTimeout)
-						.multiThreaded(true)
-						.build());
-		return factory.getObject();
+	private static ClientConnection createElasticClient(String elasticHostName, String clusterName) {
+		LOGGER.info("Creating Elasticsearch client against {}:{} on cluster '{}'", elasticHostName, ELASTIC_PORT, clusterName);
+		try {
+			final InetAddress address = InetAddress.getByName(elasticHostName);
+			final TransportClient.Builder builder = TransportClient.builder();
+			if (!Strings.isNullOrEmpty(clusterName)) {
+				final Settings settings = Settings.builder()
+						.put("cluster.name", clusterName)
+						.put("client.transport.sniff", true)
+						.build();
+				builder.settings(settings);
+			}
+			final TransportClient transportClient = builder
+					.build()
+					.addTransportAddress(new InetSocketTransportAddress(address, ELASTIC_PORT));
+			return new ClientConnection(elasticHostName, transportClient);
+		} catch (UnknownHostException e) {
+			LOGGER.error("Unknown host: {}", elasticHostName);
+			return null;
+		}
 	}
 
 	@Override
 	public void start() throws LifecycleException {
 		super.start();
-
+		LOGGER.info("Starting Elasticsearch writer.");
+		client = CONNECTIONS.computeIfAbsent(url, u -> createElasticClient(u, clusterName));
+		if (null == client) {
+			throw new LifecycleException("Can't start Elasticsearch writer: could not construct a client.");
+		}
 	}
 
 	@Override
 	public void stop() throws LifecycleException {
 		super.stop();
-
-		jestClient.shutdownClient();
+		if (null != client) {
+			if (client.release() == 0) {
+				LOGGER.info("Stopping Elasticsearch client. {}", client.get().transportAddresses());
+				CONNECTIONS.remove(client.getHost());
+				client.get().close();
+			}
+		}
 	}
 
 	public void validateSetup(Server server, Query query) throws ValidationException {
@@ -112,6 +141,10 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 	@Override
 	protected void internalWrite(Server server, Query query, ImmutableList<Result> results) throws Exception {
+		if (client == null) {
+			return;
+		}
+
 		if (results.isEmpty()) {
 			LOGGER.debug("Not processing empty query result.");
 			return;
@@ -151,15 +184,53 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 		LOGGER.debug("Insert into Elastic index [{}] with type [{}]: {}", indexName, elasticTypeName, document);
 
-		final Index idx = new Index.Builder(document).index(indexName).type(elasticTypeName).build();
 		try {
-			final DocumentResult result = jestClient.execute(idx);
-			if (!result.isSucceeded()) {
-				LOGGER.error("Failed to write entry to Elastic: {}", result.getErrorMessage());
-			}
-		} catch (IOException e) {
-			LOGGER.error("Failed to write entry to Elastic due to an exception: {}", e.getMessage());
+			client.get()
+					.prepareIndex(indexName, elasticTypeName)
+					.setSource(document)
+					.execute(WRITE_ACTION_LISTENER);
+		} catch (ElasticsearchException e) {
+			LOGGER.warn("Failed to insert document: {}", e.getMessage());
 		}
 	}
 
+	private static final class ClientConnection {
+		private final AtomicInteger refCount = new AtomicInteger(0);
+		private final String host;
+		private final TransportClient client;
+
+		private ClientConnection(String host, TransportClient client) {
+			this.host = host;
+			this.client = client;
+		}
+
+		private String getHost() {
+			return host;
+		}
+
+		private TransportClient get() {
+			return client;
+		}
+
+		private int reference() {
+			return refCount.incrementAndGet();
+		}
+
+		private int release() {
+			return refCount.decrementAndGet();
+		}
+	}
+
+	private static final class WriteActionListener implements ActionListener<IndexResponse> {
+
+		@Override
+		public void onResponse(IndexResponse indexResponse) {
+
+		}
+
+		@Override
+		public void onFailure(Throwable throwable) {
+			LOGGER.warn("Failed to insert document: {}", throwable.getMessage());
+		}
+	}
 }

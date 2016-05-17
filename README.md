@@ -31,8 +31,7 @@ Sample configuration:
 	"url" : "service:jmx:http-remoting-jmx://server.example.com:9990",
     "outputWriters" : [ {
 	  "@class" : "com.googlecode.jmxtrans.model.output.elastic.ElasticAggregateWriter",
-	  "connectionUrl" : "http://elastic.example.com:9200",
-	  "connectionReadTimeout" : "20000",
+	  "elasticHostName" : "elastic.example.com",
 	  "booleanAsNumber" : false,
 	  "elasticTypeName" : "jmx-entry",
 	  "elasticIndexName" : "tnms_jmx-entries",
