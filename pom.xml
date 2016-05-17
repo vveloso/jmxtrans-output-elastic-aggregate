@@ -4,7 +4,7 @@
 
     <groupId>com.github.vveloso</groupId>
     <artifactId>jmxtrans-output-elastic-aggregate</artifactId>
-    <version>1.2</version>
+    <version>1.3-SNAPSHOT</version>
 
 	<name>JMXTrans structured document output writer for Elasticsearch</name>
     <description>JMXTrans output writer for Elasticsearch which outputs one structured document for each query.</description>
@@ -22,7 +22,7 @@
         <url>https://github.com/vveloso/jmxtrans-output-elastic-aggregate</url>
         <connection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</connection>
         <developerConnection>scm:git:https://github.com/vveloso/jmxtrans-output-elastic-aggregate.git</developerConnection>
-      <tag>jmxtrans-output-elastic-aggregate-1.2</tag>
+      <tag>HEAD</tag>
   </scm>
 
 	<developers>
