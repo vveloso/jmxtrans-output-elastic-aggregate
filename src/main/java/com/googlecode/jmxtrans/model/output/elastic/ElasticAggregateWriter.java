@@ -12,10 +12,7 @@ import com.googlecode.jmxtrans.model.Result;
 import com.googlecode.jmxtrans.model.Server;
 import com.googlecode.jmxtrans.model.ValidationException;
 import com.googlecode.jmxtrans.model.output.BaseOutputWriter;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.client.transport.NoNodeAvailableException;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
@@ -26,7 +23,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Optional.fromNullable;
@@ -61,16 +57,14 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 	private static final String DEFAULT_INDEX_NAME = "jmxtrans";
 	private static final String DEFAULT_CLUSTER_NAME = "";
 
-	private static final int ELASTIC_PORT = 9300;
-
 	private final String elasticTypeName;
 	private final String elasticIndexName;
 	private final String url;
 	private final String clusterName;
-	private ClientConnection client;
+	private final Map<String, Object> settingsMap;
+	private ElasticClientConnection client;
 
-	private static final ActionListener<IndexResponse> WRITE_ACTION_LISTENER = new WriteActionListener();
-	private static final Map<String, ClientConnection> CONNECTIONS = new ConcurrentHashMap<>();
+	private static final Map<String, ElasticClientConnection> CONNECTIONS = new ConcurrentHashMap<>();
 
 	@JsonCreator
 	public ElasticAggregateWriter(@JsonProperty("typeNames") ImmutableList<String> typeNames,
@@ -82,7 +76,8 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 								  @JsonProperty("elasticTypeName") String elasticTypeName,
 								  @JsonProperty("settings") Map<String, Object> settings) {
 		super(typeNames, booleanAsNumber, debugEnabled, settings);
-		final Map<String, Object> settingsMap = MoreObjects.firstNonNull(settings, Collections.emptyMap());
+
+		this.settingsMap = ImmutableMap.copyOf(MoreObjects.firstNonNull(settings, Collections.emptyMap()));
 
 		this.elasticIndexName = firstNonNull(elasticIndexName, (String) settingsMap.get("elasticIndexName"), DEFAULT_INDEX_NAME);
 		this.elasticTypeName = firstNonNull(elasticTypeName, (String) settingsMap.get("elasticTypeName"), DEFAULT_TYPE_NAME);
@@ -91,46 +86,26 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 		this.clusterName = firstNonNull(elasticClusterName, (String) settingsMap.get("elasticClusterName"), DEFAULT_CLUSTER_NAME);
 	}
 
-	private static ClientConnection createElasticClient(String elasticHostName, String clusterName) {
-		LOGGER.info("Creating Elasticsearch client against {}:{} on cluster '{}'", elasticHostName, ELASTIC_PORT, clusterName);
-		try {
-			final InetAddress address = InetAddress.getByName(elasticHostName);
-			final TransportClient.Builder builder = TransportClient.builder();
-			if (!Strings.isNullOrEmpty(clusterName)) {
-				final Settings settings = Settings.builder()
-						.put("cluster.name", clusterName)
-						.put("client.transport.sniff", true)
-						.build();
-				builder.settings(settings);
-			}
-			final TransportClient transportClient = builder
-					.build()
-					.addTransportAddress(new InetSocketTransportAddress(address, ELASTIC_PORT));
-			return new ClientConnection(elasticHostName, transportClient);
-		} catch (UnknownHostException e) {
-			LOGGER.error("Unknown host: {}", elasticHostName);
-			return null;
-		}
-	}
-
 	@Override
 	public void start() throws LifecycleException {
 		super.start();
-		LOGGER.info("Starting Elasticsearch writer.");
-		client = CONNECTIONS.computeIfAbsent(url, u -> createElasticClient(u, clusterName));
+		LOGGER.info("Starting Elasticsearch writer against {}/{}.", url, clusterName);
+		client = CONNECTIONS.computeIfAbsent(url, u -> ElasticClientConnection.build(u, clusterName, settingsMap));
 		if (null == client) {
 			throw new LifecycleException("Can't start Elasticsearch writer: could not construct a client.");
+		} else {
+			client.reference();
 		}
 	}
 
 	@Override
 	public void stop() throws LifecycleException {
 		super.stop();
+		LOGGER.info("Stopping Elasticsearch client against {}/{}.", url, clusterName);
 		if (null != client) {
 			if (client.release() == 0) {
-				LOGGER.info("Stopping Elasticsearch client. {}", client.get().transportAddresses());
+				LOGGER.info("Discarding Elasticsearch client.");
 				CONNECTIONS.remove(client.getHost());
-				client.get().close();
 			}
 		}
 	}
@@ -184,53 +159,7 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 		LOGGER.debug("Insert into Elastic index [{}] with type [{}]: {}", indexName, elasticTypeName, document);
 
-		try {
-			client.get()
-					.prepareIndex(indexName, elasticTypeName)
-					.setSource(document)
-					.execute(WRITE_ACTION_LISTENER);
-		} catch (ElasticsearchException e) {
-			LOGGER.warn("Failed to insert document: {}", e.getMessage());
-		}
+		client.addRequest(new IndexRequest(indexName, elasticTypeName).source(document));
 	}
 
-	private static final class ClientConnection {
-		private final AtomicInteger refCount = new AtomicInteger(0);
-		private final String host;
-		private final TransportClient client;
-
-		private ClientConnection(String host, TransportClient client) {
-			this.host = host;
-			this.client = client;
-		}
-
-		private String getHost() {
-			return host;
-		}
-
-		private TransportClient get() {
-			return client;
-		}
-
-		private int reference() {
-			return refCount.incrementAndGet();
-		}
-
-		private int release() {
-			return refCount.decrementAndGet();
-		}
-	}
-
-	private static final class WriteActionListener implements ActionListener<IndexResponse> {
-
-		@Override
-		public void onResponse(IndexResponse indexResponse) {
-
-		}
-
-		@Override
-		public void onFailure(Throwable throwable) {
-			LOGGER.warn("Failed to insert document: {}", throwable.getMessage());
-		}
-	}
 }
