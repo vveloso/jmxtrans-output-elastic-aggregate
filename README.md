@@ -1,5 +1,7 @@
 # jmxtrans-output-elastic-aggregate
 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.vveloso/jmxtrans-output-elastic-aggregate/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.vveloso/jmxtrans-output-elastic-aggregate)
+
 JMXTrans output writer for Elasticsearch which outputs one structured document for each query.
 
 Documents pushed to Elastic have two automatically generated attributes, `@metadata` and `@timestamp`. An example of metrics obtained for a JMS queue would be:
