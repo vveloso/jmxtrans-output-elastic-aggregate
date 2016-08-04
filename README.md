@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/vveloso/jmxtrans-output-elastic-aggregate.svg?branch=master)](https://travis-ci.org/vveloso/jmxtrans-output-elastic-aggregate)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.vveloso/jmxtrans-output-elastic-aggregate/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.vveloso/jmxtrans-output-elastic-aggregate)
+[![Issue Count](https://codeclimate.com/github/vveloso/jmxtrans-output-elastic-aggregate/badges/issue_count.svg)](https://codeclimate.com/github/vveloso/jmxtrans-output-elastic-aggregate)
 
 JMXTrans output writer for Elasticsearch which outputs one structured document for each query.
 
