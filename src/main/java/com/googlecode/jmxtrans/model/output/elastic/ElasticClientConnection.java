@@ -6,12 +6,12 @@ import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.collect.HppcMaps;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Holds together an Elastic transport client and a request processor, with reference counting.
  */
 final class ElasticClientConnection {
-
 	private static final Logger LOGGER = LoggerFactory.getLogger(ElasticClientConnection.class);
 
 	private static final int ELASTIC_PORT = 9300;
@@ -80,16 +79,21 @@ final class ElasticClientConnection {
 		LOGGER.info("Creating Elasticsearch client against {}:{} on cluster '{}'", elasticHostName, ELASTIC_PORT, clusterName);
 		try {
 			final InetAddress address = InetAddress.getByName(elasticHostName);
-			final TransportClient.Builder builder = TransportClient.builder();
+
+			PreBuiltTransportClient preBuiltTransportClient = null;
+
 			if (!Strings.isNullOrEmpty(clusterName)) {
 				final Settings settings = Settings.builder()
 						.put("cluster.name", clusterName)
 						.put("client.transport.sniff", true)
 						.build();
-				builder.settings(settings);
+
+				preBuiltTransportClient = new PreBuiltTransportClient(settings);
+
+			}else{
+				preBuiltTransportClient = new PreBuiltTransportClient(Settings.EMPTY);
 			}
-			return builder
-					.build()
+			return preBuiltTransportClient
 					.addTransportAddress(new InetSocketTransportAddress(address, ELASTIC_PORT));
 		} catch (UnknownHostException e) {
 			LOGGER.error("Unknown host: {}", elasticHostName);

@@ -3,7 +3,6 @@ package com.googlecode.jmxtrans.model.output.elastic;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.googlecode.jmxtrans.exceptions.LifecycleException;
@@ -13,14 +12,9 @@ import com.googlecode.jmxtrans.model.Server;
 import com.googlecode.jmxtrans.model.ValidationException;
 import com.googlecode.jmxtrans.model.output.BaseOutputWriter;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -99,8 +93,8 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 	}
 
 	@Override
-	public void stop() throws LifecycleException {
-		super.stop();
+	public void close() throws LifecycleException {
+		super.close();
 		LOGGER.info("Stopping Elasticsearch client against {}/{}.", url, clusterName);
 		if (null != client) {
 			if (client.release() == 0) {
@@ -161,5 +155,4 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 		client.addRequest(new IndexRequest(indexName, elasticTypeName).source(document));
 	}
-
 }
