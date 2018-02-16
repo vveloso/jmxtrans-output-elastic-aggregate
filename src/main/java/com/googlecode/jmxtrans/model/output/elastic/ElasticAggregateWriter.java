@@ -138,6 +138,7 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 		metadata.put("port", Integer.valueOf(server.getPort()));
 		metadata.put("typeName", typeName);
 		metadata.put("typeNameValues", typeNameValues);
+		metadata.put("jmxType", elasticTypeName);
 
 		for (final Result result : results) {
 			metadata.putIfAbsent("className", result.getClassName());
@@ -153,6 +154,6 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 		LOGGER.debug("Insert into Elastic index [{}] with type [{}]: {}", indexName, elasticTypeName, document);
 
-		client.addRequest(new IndexRequest(indexName, elasticTypeName).source(document));
+		client.addRequest(new IndexRequest(indexName, DEFAULT_TYPE_NAME).source(document));
 	}
 }
