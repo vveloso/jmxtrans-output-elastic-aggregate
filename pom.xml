@@ -41,12 +41,18 @@
         <dependency>
             <groupId>org.jmxtrans</groupId>
             <artifactId>jmxtrans-output-core</artifactId>
-            <version>263</version>
+            <version>266</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.sun</groupId>
+					<artifactId>tools</artifactId>
+				</exclusion>
+			</exclusions>
         </dependency>
 		<dependency>
 			<groupId>org.elasticsearch.client</groupId>
 			<artifactId>elasticsearch-rest-high-level-client</artifactId>
-			<version>6.2.1</version>
+			<version>7.3.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>

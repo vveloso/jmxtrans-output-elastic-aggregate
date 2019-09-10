@@ -154,6 +154,6 @@ public class ElasticAggregateWriter extends BaseOutputWriter {
 
 		LOGGER.debug("Insert into Elastic index [{}] with type [{}]: {}", indexName, elasticTypeName, document);
 
-		client.addRequest(new IndexRequest(indexName, DEFAULT_TYPE_NAME).source(document));
+		client.addRequest(new IndexRequest(indexName).source(document));
 	}
 }

@@ -4,6 +4,7 @@ import org.apache.http.HttpHost;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.ByteSizeUnit;
@@ -109,7 +110,8 @@ final class ElasticClientConnection {
 				maxBulkRequests, bulkConcurrency, maxBulkSize, maxBulkHoldSeconds, bulkBackoffWaitMillis, maxBulkBackoffRetries);
 
 		// see https://www.elastic.co/guide/en/elasticsearch/client/java-api/current/java-docs-bulk-processor.html
-		return BulkProcessor.builder(client::bulkAsync, new ElasticBulkListener())
+		return BulkProcessor.builder((request, bulkListener) ->
+				client.bulkAsync(request, RequestOptions.DEFAULT, bulkListener), new ElasticBulkListener())
 				// We want to execute the bulk every 5000 requests.
 				.setBulkActions(maxBulkRequests)
 				// We want to flush the bulk every 100MB.
